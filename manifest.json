@@ -1,0 +1,15 @@
+{
+  "name": "SRM Fitness OS",
+  "short_name": "SRM Fitness",
+  "start_url": "index.html",
+  "display": "standalone",
+  "background_color": "#0f2027",
+  "theme_color": "#00ffcc",
+  "icons": [
+    {
+      "src": "https://cdn-icons-png.flaticon.com/512/3048/3048398.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}

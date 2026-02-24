@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SRM Fitness OS - Kappian KT</title>
+    <link rel="manifest" href="manifest.json">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+    
+    <style>
+        :root { 
+            --primary: #00ffcc; 
+            --secondary: #00c6ff; 
+            --bg: #0f2027; 
+            --card-bg: rgba(255, 255, 255, 0.07);
+            --text: white;
+        }
+
+        body.light-mode {
+            --bg: #f0f2f5;
+            --card-bg: rgba(0, 0, 0, 0.05);
+            --text: #1c1e21;
+        }
+
+        body { margin: 0; font-family: 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); overflow-x: hidden; transition: 0.3s; }
+        
+        .bg-layer {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: -1;
+            background: linear-gradient(-45deg, #0f2027, #203a43, #2c5364);
+            background-size: 400% 400%; animation: bgAnim 15s ease infinite;
+        }
+        body.light-mode .bg-layer { background: #f0f2f5; animation: none; }
+
+        @keyframes bgAnim { 0% {background-position: 0% 50%} 50% {background-position: 100% 50%} 100% {background-position: 0% 50%} }
+
+        /* Setup Screen */
+        #setupOverlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #0f2027; z-index: 2000; display: flex; align-items: center; justify-content: center; }
+        .setup-card { background: rgba(255, 255, 255, 0.1); padding: 30px; border-radius: 25px; width: 85%; max-width: 400px; text-align: center; border: 1px solid var(--primary); }
+
+        /* Sidebar */
+        .sidebar { position: fixed; left: -250px; top: 0; width: 230px; height: 100%; background: #111; padding: 20px; transition: 0.4s; z-index: 1000; }
+        .sidebar.active { left: 0; }
+        .sidebar button { width: 100%; margin: 10px 0; padding: 12px; border: none; background: var(--secondary); color: white; border-radius: 8px; cursor: pointer; text-align: left; font-weight: bold; }
+
+        .main { padding: 20px; max-width: 800px; margin: auto; }
+        .header-ui { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+        .header-actions { display: flex; align-items: center; gap: 15px; }
+        .menu-btn, .theme-btn { font-size: 24px; cursor: pointer; color: var(--primary); }
+        .streak-badge { background: rgba(255, 100, 0, 0.2); border: 1px solid #ff6400; padding: 5px 12px; border-radius: 20px; color: #ffca28; font-weight: bold; font-size: 14px; }
+
+        .page { display: none; animation: fadeIn 0.5s ease; }
+        .page.active { display: block; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+        .card { background: var(--card-bg); backdrop-filter: blur(15px); padding: 20px; border-radius: 20px; margin-bottom: 20px; border: 1px solid rgba(128,128,128,0.2); }
+        
+        .selector-group { display: flex; gap: 8px; margin-bottom: 15px; overflow-x: auto; padding-bottom: 5px; }
+        .tab-btn { background: rgba(128,128,128,0.2); border: none; color: var(--text); padding: 8px 15px; border-radius: 12px; cursor: pointer; white-space: nowrap; font-size: 13px; }
+        .tab-btn.active { background: var(--primary); color: #111; font-weight: bold; }
+
+        .ring-container { display: flex; justify-content: center; margin: 20px 0; }
+        .progress-ring { width: 150px; height: 150px; border-radius: 50%; display: flex; flex-direction: column; align-items: center; justify-content: center; font-weight: bold; border: 4px solid rgba(128,128,128,0.2); }
+        
+        .footer { text-align: center; margin-top: 40px; padding: 20px; border-top: 1px solid rgba(128,128,128,0.2); font-size: 14px; }
+        input, select { width: 100%; padding: 12px; margin: 10px 0; border-radius: 10px; border: none; background: rgba(128,128,128,0.2); color: var(--text); box-sizing: border-box; }
+        
+        .bmi-badge { background: var(--primary); color: #111; padding: 5px 10px; border-radius: 8px; font-weight: bold; margin-top: 5px; display: inline-block; }
+        .workout-combo { background: rgba(0, 255, 204, 0.1); padding: 12px; border-radius: 10px; border-left: 3px solid var(--primary); margin-bottom: 10px; line-height: 1.6; }
+    </style>
+</head>
+<body class="dark-mode">
+    <div class="bg-layer"></div>
+
+    <div id="setupOverlay" style="display:none;">
+        <div class="setup-card">
+            <h2 style="color:var(--primary)">SRM Fitness OS</h2>
+            <p style="color:white;">Enter your name to start:</p>
+            <input type="text" id="setupName" placeholder="e.g. Kappian KT">
+            <button onclick="completeSetup()" style="width:100%; padding:12px; background:var(--primary); color:#111; border:none; border-radius:10px; font-weight:bold; cursor:pointer;">BEGIN</button>
+        </div>
+    </div>
+
+    <div class="sidebar" id="sidebar">
+        <h2 style="color:var(--primary); margin-left:10px;">SRM OS</h2>
+        <button onclick="showPage('home')"><i class="fa fa-home"></i> Home</button>
+        <button onclick="showPage('profile')"><i class="fa fa-user"></i> Profile</button>
+        <button onclick="showPage('workout')"><i class="fa fa-dumbbell"></i> Workout</button>
+        <button onclick="showPage('menu')"><i class="fa fa-utensils"></i> Full Menu</button>
+    </div>
+
+    <div class="main">
+        <div class="header-ui">
+            <i class="fa fa-bars menu-btn" onclick="toggleSidebar()"></i>
+            <div class="header-actions">
+                <div id="streakDisplay" class="streak-badge"><i class="fa fa-fire"></i> 0 Day Streak</div>
+                <i class="fa fa-moon theme-btn" id="themeIcon" onclick="toggleTheme()"></i>
+            </div>
+        </div>
+
+        <div id="home" class="page active">
+            <div class="card">
+                <h3 id="welcomeHeader">Hello!</h3>
+                <div id="bmiInfo" style="font-size: 13px; opacity: 0.8;"></div>
+            </div>
+
+            <div class="card">
+                <h3 style="color:var(--primary)">Smart Meal Suggestion</h3>
+                <div class="selector-group" id="daySelector">
+                    <button class="tab-btn" onclick="setManualDay('Monday')">Mon</button>
+                    <button class="tab-btn" onclick="setManualDay('Tuesday')">Tue</button>
+                    <button class="tab-btn" onclick="setManualDay('Wednesday')">Wed</button>
+                    <button class="tab-btn" onclick="setManualDay('Thursday')">Thu</button>
+                    <button class="tab-btn" onclick="setManualDay('Friday')">Fri</button>
+                    <button class="tab-btn" onclick="setManualDay('Saturday')">Sat</button>
+                    <button class="tab-btn" onclick="setManualDay('Sunday')">Sun</button>
+                </div>
+                <div class="selector-group">
+                    <button class="tab-btn meal-btn" id="btn-breakfast" onclick="setManualMeal('breakfast')">Breakfast</button>
+                    <button class="tab-btn meal-btn" id="btn-lunch" onclick="setManualMeal('lunch')">Lunch</button>
+                    <button class="tab-btn meal-btn" id="btn-dinner" onclick="setManualMeal('dinner')">Dinner</button>
+                </div>
+                <div id="mealDisplay"></div>
+                <div class="ring-container">
+                    <div id="calorieRing" class="progress-ring">
+                        <span id="calValue" style="font-size:24px">0</span>
+                        <small>KCAL TARGET</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="profile" class="page">
+            <div class="card">
+                <h3>Settings</h3>
+                <label>Update Name</label>
+                <input type="text" id="profileName">
+                <label>Height (cm)</label>
+                <input type="number" id="userHeight">
+                <label>Weight (kg)</label>
+                <input type="number" id="userWeight">
+                <label>Goal</label>
+                <select id="userGoal">
+                    <option value="gain">Muscle Gain</option>
+                    <option value="loss">Fat Loss</option>
+                    <option value="maintain">Maintain</option>
+                </select>
+                <button onclick="saveProfile()" style="width:100%; padding:12px; background:var(--primary); color:#111; border:none; border-radius:10px; font-weight:bold; cursor:pointer;">SAVE</button>
+            </div>
+        </div>
+
+        <div id="workout" class="page">
+            <div class="card"><h3>Gym Combo Routine</h3><div id="workoutPlan"></div></div>
+        </div>
+
+        <div id="menu" class="page">
+            <div class="card"><h3>Full Timetable</h3><div style="overflow-x:auto"><table style="width:100%; font-size:11px; text-align:left;"><tbody id="fullMenuTable"></tbody></table></div></div>
+        </div>
+
+        <div class="footer">
+            <p>Made by <b id="footerName">Kappian KT</b></p>
+            <p><i class="fa fa-phone"></i> 6380149350 | <i class="fa fa-envelope"></i> kk6047@srmist.edu.in</p>
+        </div>
+    </div>
+
+    <script>
+        const srmMenu = {
+            Monday: { breakfast: "Idly, Sambar, Omelet", lunch: "Jeera Pulao, Dal, Veg Usili", dinner: "Paratha, Rajma, Mutton Gravy" },
+            Tuesday: { breakfast: "Pongal, Vada, Chutney", lunch: "Variety Rice, Veg Poriyal, Sambar", dinner: "Noodles, Manchurian, Chicken Gravy" },
+            Wednesday: { breakfast: "Dosa, Sambar, Boiled Egg", lunch: "Roti, Aloo Palak, Chicken Curry", dinner: "Steamed Rice, Dal, Chicken Masala" },
+            Thursday: { breakfast: "Idly, Vada, Chutney", lunch: "Onion Pulao, Sambar, Rasam", dinner: "Ghee Pulao, Paneer Masala, Mutton Gravy" },
+            Friday: { breakfast: "Podi Dosa, Idly, Sambar", lunch: "Veg Biryani, Raitha, Curd Rice", dinner: "Chole Bhatura, Chicken Gravy" },
+            Saturday: { breakfast: "Chapathi, Veg Khurma", lunch: "Veg Pulao, Steamed Rice, Dal", dinner: "Malabar Paratha, Veg Gravy, Fish Fry" },
+            Sunday: { breakfast: "Chole Poori, Upma", lunch: "Chicken/Paneer Biryani, Raitha", dinner: "Paratha, Curd, Chicken Gravy" }
+        };
+
+        let profile = JSON.parse(localStorage.getItem('profile')) || { name: null, weight: 70, height: 170, goal: 'maintain', lastLogin: null, streak: 0, theme: 'dark' };
+        let currentViewDay = new Date().toLocaleString('en-us', {weekday:'long'});
+        let currentViewMeal = getMealByTime();
+
+        window.onload = () => {
+            if(!profile.name) {
+                document.getElementById('setupOverlay').style.display = 'flex';
+            } else {
+                completeSetup(true);
+            }
+            applyTheme(profile.theme);
+        };
+
+        function getMealByTime() {
+            const hr = new Date().getHours();
+            if (hr < 11) return 'breakfast';
+            if (hr < 16) return 'lunch';
+            return 'dinner';
+        }
+
+        function toggleTheme() {
+            profile.theme = (profile.theme === 'dark') ? 'light' : 'dark';
+            localStorage.setItem('profile', JSON.stringify(profile));
+            applyTheme(profile.theme);
+        }
+
+        function applyTheme(theme) {
+            const icon = document.getElementById('themeIcon');
+            if(theme === 'light') {
+                document.body.classList.add('light-mode');
+                icon.classList.replace('fa-moon', 'fa-sun');
+            } else {
+                document.body.classList.remove('light-mode');
+                icon.classList.replace('fa-sun', 'fa-moon');
+            }
+        }
+
+        function completeSetup(isInit = false) {
+            if(!isInit) {
+                const name = document.getElementById('setupName').value;
+                if(!name) return;
+                profile.name = name;
+                localStorage.setItem('profile', JSON.stringify(profile));
+                document.getElementById('setupOverlay').style.display = 'none';
+            }
+            document.getElementById('profileName').value = profile.name;
+            document.getElementById('footerName').innerText = profile.name;
+            handleStreak();
+            updateFullMenu();
+            calculateBMI();
+            syncUI();
+        }
+
+        function syncUI() {
+            document.getElementById('welcomeHeader').innerText = `Hello, ${profile.name}!`;
+            refreshMeal(currentViewDay, currentViewMeal);
+            updateDayTabs();
+        }
+
+        function setManualDay(day) { currentViewDay = day; syncUI(); }
+        function setManualMeal(meal) { currentViewMeal = meal; syncUI(); }
+
+        function refreshMeal(day, mealType) {
+            const items = srmMenu[day][mealType].split(', ');
+            let html = "";
+            items.forEach(item => {
+                let qty = "1 Bowl";
+                if (item.includes("Idly") || item.includes("Poori")) qty = (profile.goal === 'loss') ? "3 Nos" : "5 Nos";
+                if (item.includes("Dosa") || item.includes("Paratha")) qty = (profile.goal === 'loss') ? "2 Nos" : "4 Nos";
+                if (item.includes("Rice")) qty = (profile.goal === 'loss') ? "1/2 Cup" : "2 Cups";
+                
+                html += `<div style="background:rgba(128,128,128,0.1); padding:12px; border-radius:12px; margin-bottom:10px; border-left:4px solid var(--primary); display:flex; justify-content:space-between;">
+                            <b>${item}</b> <span style="font-size:12px; color:var(--secondary)">${qty}</span>
+                         </div>`;
+            });
+            document.getElementById('mealDisplay').innerHTML = html;
+            document.querySelectorAll('.meal-btn').forEach(b => b.classList.remove('active'));
+            document.getElementById(`btn-${mealType}`).classList.add('active');
+
+            let target = mealType === 'breakfast' ? 450 : (mealType === 'lunch' ? 850 : 750);
+            if (profile.goal === 'gain') target += 250;
+            if (profile.goal === 'loss') target -= 150;
+            document.getElementById('calValue').innerText = target;
+            const deg = (target / 1200) * 360;
+            document.getElementById('calorieRing').style.background = `conic-gradient(var(--primary) ${deg}deg, rgba(128,128,128,0.2) 0deg)`;
+        }
+
+        function saveProfile() {
+            profile.name = document.getElementById('profileName').value;
+            profile.weight = document.getElementById('userWeight').value;
+            profile.height = document.getElementById('userHeight').value;
+            profile.goal = document.getElementById('userGoal').value;
+            localStorage.setItem('profile', JSON.stringify(profile));
+            completeSetup(true);
+            alert("Saved!");
+        }
+
+        function calculateBMI() {
+            if(profile.height && profile.weight) {
+                let bmi = (profile.weight / ((profile.height/100)**2)).toFixed(1);
+                document.getElementById('bmiInfo').innerHTML = `Status: <span class="bmi-badge">BMI ${bmi}</span>`;
+            }
+        }
+
+        function showPage(id) {
+            document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+            document.getElementById(id).classList.add('active');
+            if(id === 'workout') updateWorkout();
+            document.getElementById('sidebar').classList.remove('active');
+        }
+
+        function updateWorkout() {
+            let html = (profile.goal === 'gain') ? `<div class="workout-combo"><b>Combo 1: Heavy Strength</b><br>Bench Press (4x8) + Rows (4x8)</div>` : `<div class="workout-combo"><b>Combo 1: Fat Burn</b><br>Burpees (20) + Mountain Climbers (30s)</div>`;
+            document.getElementById('workoutPlan').innerHTML = html;
+        }
+
+        function handleStreak() {
+            const today = new Date().toDateString();
+            if (profile.lastLogin !== today) {
+                const yesterday = new Date();
+                yesterday.setDate(yesterday.getDate() - 1);
+                profile.streak = (profile.lastLogin === yesterday.toDateString()) ? profile.streak + 1 : 1;
+                profile.lastLogin = today;
+                localStorage.setItem('profile', JSON.stringify(profile));
+            }
+            document.getElementById('streakDisplay').innerHTML = `<i class="fa fa-fire"></i> ${profile.streak} Day Streak`;
+        }
+
+        function toggleSidebar() { document.getElementById('sidebar').classList.toggle('active'); }
+        function updateFullMenu() {
+            let html = "";
+            for(let day in srmMenu) {
+                html += `<tr><td style="padding:8px; border:1px solid #444; font-weight:bold">${day.substring(0,3)}</td><td style="border:1px solid #444">${srmMenu[day].breakfast}</td><td style="border:1px solid #444">${srmMenu[day].lunch}</td><td style="border:1px solid #444">${srmMenu[day].dinner}</td></tr>`;
+            }
+            document.getElementById('fullMenuTable').innerHTML = html;
+        }
+
+        function updateDayTabs() {
+            const buttons = document.getElementById('daySelector').children;
+            for(let b of buttons) {
+                b.classList.remove('active');
+                if(b.innerText === currentViewDay.substring(0,3)) b.classList.add('active');
+            }
+        }
+    </script>
+
+    <script>
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+          navigator.serviceWorker.register('sw.js');
+        });
+      }
+    </script>
+</body>
+</html>
